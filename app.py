@@ -1,3 +1,6 @@
+import smtplib
+from email.message 
+import EmailMessage
 import os
 import re
 import sqlite3
@@ -52,6 +55,29 @@ init_db()
 def health():
     return {"status": "ok", "time": datetime.utcnow().isoformat() + "Z"}
 
+def send_email(to_email: str, subject: str, text_body: str, reply_to: str | None = None):
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER")
+    password = os.getenv("SMTP_PASS")
+
+    if not user or not password:
+        raise RuntimeError("SMTP_USER/SMTP_PASS not set in Render Environment Variables")
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"CIEL Professionals <{user}>"
+    msg["To"] = to_email
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(text_body)
+
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(user, password)
+        smtp.send_message(msg)
+
 
 @app.post("/api/newsletter")
 def newsletter():
@@ -105,6 +131,39 @@ def contact():
     )
     conn.commit()
     conn.close()
+    admin_email = os.getenv("ADMIN_EMAIL", "jesedebe@gmail.com")
+
+    # Email admin
+    try:
+        subject = f"New Contact Message - {topic or 'General'}"
+        body = (
+            f"New message from cielprofs.com\n\n"
+            f"Name: {name}\n"
+            f"Email: {email}\n"
+            f"Phone: {phone}\n"
+            f"Topic: {topic}\n\n"
+            f"Message:\n{message}\n\n"
+            f"Time (UTC): {datetime.utcnow().isoformat()}Z\n"
+        )
+        send_email(admin_email, subject, body, reply_to=email)
+        print("✅ Admin email sent to", admin_email)
+    except Exception as e:
+        print("❌ Admin email failed:", e)
+
+    # Auto-reply user
+    try:
+        subject2 = "We received your message | CIEL Professionals"
+        body2 = (
+            f"Hi {name},\n\n"
+            "Thanks for contacting CIEL Professionals. We have received your message and will respond shortly.\n\n"
+            "Regards,\n"
+            "CIEL Professionals\n"
+            "https://cielprofs.com\n"
+        )
+        send_email(email, subject2, body2, reply_to=admin_email)
+        print("✅ Auto-reply sent to", email)
+    except Exception as e:
+        print("❌ Auto-reply failed:", e)
 
     # Optional: email notification (add later)
     return jsonify({"ok": True, "message": "Message received"}), 201
@@ -113,5 +172,6 @@ def contact():
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+
 
 
