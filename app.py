@@ -9,7 +9,7 @@ DB_PATH = os.getenv("DB_PATH", "ciel.db")
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": ["https://cielprofs.com", "https://www.cielprofs.com"]}})
-init_db()
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -44,6 +44,8 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+# ✅ Create tables on startup (Gunicorn/Render safe)
+init_db()
 
 
 @app.get("/health")
@@ -111,4 +113,5 @@ def contact():
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+
 
