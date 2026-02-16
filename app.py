@@ -56,11 +56,14 @@ init_db()
 def health():
     return {"status": "ok", "time": datetime.utcnow().isoformat() + "Z"}
     
-def send_email(to_email: str, subject: str, text_body: str, reply_to: Optional[str] = None):
-    host = (os.getenv("SMTP_HOST", "smtp.gmail.com") or "smtp.gmail.com").strip()
-    port = int(os.getenv("SMTP_PORT", "587"))
+def send_email(to_email: str, subject: str, text_body: str, reply_to: str | None = None):
+    host = (os.getenv("SMTP_HOST") or "smtp.gmail.com").strip()
+    port = int((os.getenv("SMTP_PORT") or "587").strip())
     user = (os.getenv("SMTP_USER") or "").strip()
     password = (os.getenv("SMTP_PASS") or "").strip()
+
+    print("SMTP DEBUG => host:", repr(host), "port:", port, "user:", repr(user), "pass_len:", len(password))
+
 
 
     if not user or not password:
@@ -174,6 +177,7 @@ def contact():
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+
 
 
 
